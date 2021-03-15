@@ -1,0 +1,5 @@
+#+TITLE: educational-consultations-bot
+
+#+BEGIN_QUOTE
+Diploma
+#+END_QUOTE
