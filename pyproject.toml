@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "educational-consultations-bot"
+version = "0.1.0"
+description = ""
+authors = ["Yevhen Shymotiuk <yevhenshymotiuk@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+python-telegram-bot = "^13.3"
+spacy = "^3.0.5"
+scikit-learn = "^0.24.1"
+nltk = "^3.5"
+pylint = "^2.7.2"
+numpy = "^1.20.1"
+pandas-gbq = "^0.14.1"
+beautifulsoup4 = "^4.9.3"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

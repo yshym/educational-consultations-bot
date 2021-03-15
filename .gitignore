@@ -1,0 +1,14 @@
+# Byte-compiled
+__pycache__/
+
+# Environment
+.envrc
+
+# Flycheck
+flycheck_*.py
+
+# Mac OS
+.DS_Store
+
+# Pickle
+*.pkl
