@@ -4,11 +4,14 @@ import pickle
 import nltk
 import spacy
 from bs4 import BeautifulSoup
-from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
 from pandas_gbq import read_gbq
 from sklearn import svm
 from sklearn.model_selection import train_test_split
+
+from .category import Category
 
 
 def load_nlp():
@@ -42,7 +45,7 @@ def fetch_questions_query():
     query = f"""
     SELECT title, body, tags
     FROM `bigquery-public-data.stackoverflow.posts_questions`
-    WHERE {category_conditions(['frontend', 'backend'])}
+    WHERE {category_conditions(Category.values())}
     LIMIT 5000
     """
 
@@ -76,21 +79,29 @@ def load_df():
     df["text"] = df["title"] + [
         BeautifulSoup(body, "html.parser").get_text() for body in df["body"]
     ]
-    df["category"] = df.apply(category(["frontend", "backend"]), axis=1)
+    df["category"] = df.apply(category(Category.values()), axis=1)
     df = df.drop(columns=["title", "body", "tags"])
 
     return df
 
 
-def lemmatized_phrase(phrase):
+def optimized_phrase(phrase):
+    stopwords_ = stopwords.words("english")
+
     lemmatizer = WordNetLemmatizer()
     words = word_tokenize(phrase)
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-    return " ".join(lemmatized_words)
+
+    optimized_words = [
+        lemmatizer.lemmatize(word)
+        for word in words
+        if word.isalpha() and word.lower() not in stopwords_
+    ]
+
+    return " ".join(optimized_words)
 
 
 def predict(nlp, model, x):
-    docs = [nlp(lemmatized_phrase(text)) for text in x]
+    docs = [nlp(optimized_phrase(text)) for text in x]
     word_vectors = [x.vector for x in docs]
     return model.predict(word_vectors)[0]
 
@@ -110,7 +121,8 @@ def load():
 def train():
     nlp = load_nlp()
     df = load_df()
-    docs = [nlp(lemmatized_phrase(text)) for text in df["text"]]
+    print(word_tokenize(optimized_phrase(df["text"][0])))
+    docs = [nlp(optimized_phrase(text)) for text in df["text"]]
     word_vectors = [x.vector for x in docs]
 
     X_train, X_test, y_train, y_test = train_test_split(
