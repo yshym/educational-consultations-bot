@@ -1,98 +1,27 @@
-import os
 import pickle
 
 import nltk
 import spacy
-from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from pandas_gbq import read_gbq
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 
-from .category import Category
+from .data import load_df
 
 
 def load_nlp():
     return spacy.load("en_core_web_lg")
 
 
-def fetch_questions_query():
-    def category_conditions(categories):
-        conditions = ""
-
-        for c in categories:
-            if conditions:
-                conditions += "\n\tOR "
-
-            positive_conditions = f"""(tags LIKE '%|{c}|%'
-            OR tags LIKE '%|{c}'
-            OR tags LIKE '{c}|%'
-            OR tags LIKE '{c}')"""
-            negative_conditions = " AND ".join(
-                f"""(tags NOT LIKE '%|{oc}|%'
-                AND tags NOT LIKE '%|{oc}%'
-                AND tags NOT LIKE '%{oc}|%')"""
-                for oc in [x for x in categories if x != c]
-            )
-            conditions += (
-                f"{positive_conditions}\n\t\tAND {negative_conditions}"
-            )
-
-        return conditions
-
-    query = f"""
-    SELECT title, body, tags
-    FROM `bigquery-public-data.stackoverflow.posts_questions`
-    WHERE {category_conditions(Category.values())}
-    LIMIT 5000
-    """
-
-    return query
-
-
-def category(categories):
-    def f(row):
-        for c in categories:
-            if c in row["tags"]:
-                value = c
-                break
-
-        return value
-
-    return f
-
-
-def load_df():
-    df_file = "models/df.pkl"
-
-    if os.path.isfile(df_file):
-        with open(df_file, "rb") as f:
-            df = pickle.load(f)
-    else:
-        query = fetch_questions_query()
-        df = read_gbq(query, project_id=os.getenv("GOOGLE_PROJECT_ID"))
-        with open(df_file, "wb") as f:
-            pickle.dump(df, f)
-
-    df["text"] = df["title"] + [
-        BeautifulSoup(body, "html.parser").get_text() for body in df["body"]
-    ]
-    df["category"] = df.apply(category(Category.values()), axis=1)
-    df = df.drop(columns=["title", "body", "tags"])
-
-    return df
-
-
 def optimized_phrase(phrase):
     stopwords_ = stopwords.words("english")
-
     lemmatizer = WordNetLemmatizer()
-    words = word_tokenize(phrase)
 
+    words = word_tokenize(phrase)
     optimized_words = [
-        lemmatizer.lemmatize(word)
+        lemmatizer.lemmatize(word.lower())
         for word in words
         if word.isalpha() and word.lower() not in stopwords_
     ]
@@ -121,7 +50,6 @@ def load():
 def train():
     nlp = load_nlp()
     df = load_df()
-    print(word_tokenize(optimized_phrase(df["text"][0])))
     docs = [nlp(optimized_phrase(text)) for text in df["text"]]
     word_vectors = [x.vector for x in docs]
 
