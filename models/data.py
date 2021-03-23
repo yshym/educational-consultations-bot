@@ -35,7 +35,7 @@ def fetch_questions_query():
     SELECT title, body, tags
     FROM `bigquery-public-data.stackoverflow.posts_questions`
     WHERE {category_conditions(Category.values())}
-    LIMIT 10000
+    LIMIT 15000
     """
 
     return query
