@@ -11,4 +11,4 @@ flycheck_*.py
 .DS_Store
 
 # Pickle
-*.pkl
+models/pickle/

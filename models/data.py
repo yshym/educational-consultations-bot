@@ -4,10 +4,8 @@ import pickle
 from bs4 import BeautifulSoup
 from pandas_gbq import read_gbq
 
-from .category import Category
 
-
-def fetch_questions_query():
+def fetch_questions_query(categories):
     def category_conditions(categories):
         conditions = ""
 
@@ -34,7 +32,7 @@ def fetch_questions_query():
     query = f"""
     SELECT title, body, tags
     FROM `bigquery-public-data.stackoverflow.posts_questions`
-    WHERE {category_conditions(Category.values())}
+    WHERE {category_conditions(categories)}
     LIMIT 15000
     """
 
@@ -53,22 +51,20 @@ def category(categories):
     return f
 
 
-def load_df():
-    df_file = "models/df.pkl"
-
-    if os.path.isfile(df_file):
-        with open(df_file, "rb") as f:
+def load_df(categories, file_path):
+    if os.path.isfile(file_path):
+        with open(file_path, "rb") as f:
             df = pickle.load(f)
     else:
-        query = fetch_questions_query()
+        query = fetch_questions_query(categories)
         df = read_gbq(query, project_id=os.getenv("GOOGLE_PROJECT_ID"))
-        with open(df_file, "wb") as f:
+        with open(file_path, "wb") as f:
             pickle.dump(df, f)
 
     df["text"] = df["title"] + [
         BeautifulSoup(body, "html.parser").get_text() for body in df["body"]
     ]
-    df["category"] = df.apply(category(Category.values()), axis=1)
+    df["category"] = df.apply(category(categories), axis=1)
     df = df.drop(columns=["title", "body", "tags"])
 
     return df

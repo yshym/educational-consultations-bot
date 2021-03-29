@@ -1,43 +1,45 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
+from models import predict
 from models.category import Category, Subcategory
 from utils.iterable import batch
+from utils.telegram import reply_markup_from_categories
 
 
-def reply_markup_from_categories(categories):
-    keyboard = batch(
-        [
-            InlineKeyboardButton(c.value, callback_data=c.value)
-            for c in categories
-        ],
-        3,
-    )
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    return reply_markup
+def button_wrapper(nlp, models):
+    def button(update: Update, _context: CallbackContext) -> None:
+        query = update.callback_query
+        query.answer()
+
+        yes, category, subcategory, text = query.data.split("|")
+        if yes:
+            if subcategory:
+                query.edit_message_reply_markup(reply_markup=None)
+            else:
+                subcategory = predict(nlp, models[Category(category)], text)
+                reply_markup = reply_markup_from_categories(
+                    Category(category).subcategories,
+                    category,
+                    subcategory,
+                    text,
+                )
+                query.edit_message_text(text=Subcategory(subcategory).link)
+                query.edit_message_reply_markup(reply_markup=reply_markup)
+        elif subcategory:
+            query.edit_message_text(text=Subcategory(subcategory).link)
+        else:
+            subcategory = predict(nlp, models[Category(category)], text)
+            reply_markup = reply_markup_from_categories(
+                Category(category).subcategories, category, subcategory, text
+            )
+
+            query.edit_message_text(text=Subcategory(subcategory).link)
+            query.edit_message_reply_markup(reply_markup=reply_markup)
+
+    return button
 
 
-def button(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.answer()
-
-    if query.data.startswith("yes|"):
-        _, category = query.data.split("|")
-        reply_markup = reply_markup_from_categories(
-            Category(category).subcategories
-        )
-
-        query.edit_message_reply_markup(reply_markup=reply_markup)
-    elif query.data in Subcategory.values():
-        query.edit_message_text(text=Subcategory(query.data).link)
-    elif query.data in Category.values():
-        category = query.data
-        reply_markup = reply_markup_from_categories(
-            Category(category).subcategories
-        )
-
-        query.edit_message_text(text=Category(query.data).value)
-        query.edit_message_reply_markup(reply_markup=reply_markup)
-
-
-button_handler = CallbackQueryHandler(button)
+button_handler_wrapper = lambda nlp, models: CallbackQueryHandler(
+    button_wrapper(nlp, models)
+)

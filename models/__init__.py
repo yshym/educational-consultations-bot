@@ -1,4 +1,6 @@
+import os
 import pickle
+from string import punctuation
 
 import nltk
 import spacy
@@ -8,6 +10,7 @@ from nltk.tokenize import word_tokenize
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 
+from .category import Category, SUBCATEGORIES
 from .data import load_df
 
 
@@ -23,7 +26,7 @@ def optimized_phrase(phrase):
     optimized_words = [
         lemmatizer.lemmatize(word.lower())
         for word in words
-        if word.isalpha() and word.lower() not in stopwords_
+        if word not in punctuation and word.lower() not in stopwords_
     ]
 
     return " ".join(optimized_words)
@@ -35,26 +38,25 @@ def predict(nlp, model, x):
     return model.predict(word_vectors)[0]
 
 
-def dump(model):
-    with open("models/model.pkl", "wb") as f:
+def dump(model, file_path):
+    with open(file_path, "wb") as f:
         pickle.dump(model, f)
 
 
-def load():
-    with open("models/model.pkl", "rb") as f:
+def load(file_path):
+    with open(file_path, "rb") as f:
         model = pickle.load(f)
 
     return model
 
 
-def train():
+def train(dataframe):
     nlp = load_nlp()
-    df = load_df()
-    docs = [nlp(optimized_phrase(text)) for text in df["text"]]
+    docs = [nlp(optimized_phrase(text)) for text in dataframe["text"]]
     word_vectors = [x.vector for x in docs]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        word_vectors, df["category"], test_size=0.35
+        word_vectors, dataframe["category"], test_size=0.35
     )
 
     model = svm.SVC(kernel="linear")
@@ -71,5 +73,28 @@ def init():
     nltk.download("stopwords")
     nltk.download("punkt")
 
-    model = train()
-    dump(model)
+    categories = Category.values()
+    category_df = load_df(
+        categories, os.getenv("CATEGORY_DATAFRAME_FILE_PATH")
+    )
+    category_model = train(category_df)
+
+    frontend_subcategories = [
+        c.value for c in SUBCATEGORIES[Category.FRONTEND]
+    ]
+    frontend_df = load_df(
+        frontend_subcategories,
+        os.getenv("FRONTEND_SUBCATEGORY_DATAFRAME_FILE_PATH"),
+    )
+    frontend_model = train(frontend_df)
+
+    backend_subcategories = [c.value for c in SUBCATEGORIES[Category.BACKEND]]
+    backend_df = load_df(
+        backend_subcategories,
+        os.getenv("BACKEND_SUBCATEGORY_DATAFRAME_FILE_PATH"),
+    )
+    backend_model = train(backend_df)
+
+    dump(category_model, os.getenv("CATEGORY_MODEL_FILE_PATH"))
+    dump(frontend_model, os.getenv("FRONTEND_SUBCATEGORY_MODEL_FILE_PATH"))
+    dump(backend_model, os.getenv("BACKEND_SUBCATEGORY_MODEL_FILE_PATH"))
