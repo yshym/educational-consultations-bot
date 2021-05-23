@@ -1,3 +1,4 @@
+import logging
 import os
 
 import models
@@ -28,3 +29,5 @@ def add_handlers(dispatcher):
             },
         )
     )
+
+    logging.info("Handlers were added")
