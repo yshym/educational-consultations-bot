@@ -1,9 +1,8 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import CallbackQueryHandler, CallbackContext
 
 from models import predict
 from models.category import Category, Subcategory
-from utils.iterable import batch
 from utils.telegram import reply_markup_from_categories
 
 
