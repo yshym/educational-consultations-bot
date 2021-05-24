@@ -10,5 +10,5 @@ flycheck_*.py
 # Mac OS
 .DS_Store
 
-# Pickle
-models/pickle/
+# tar archives
+*.tar.gz
