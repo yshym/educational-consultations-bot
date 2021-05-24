@@ -1,5 +1,6 @@
 import os
 import pickle
+from collections import Counter
 from string import punctuation
 
 import nltk
@@ -26,16 +27,22 @@ def optimized_phrase(phrase):
     optimized_words = [
         lemmatizer.lemmatize(word.lower())
         for word in words
-        if word not in punctuation and word.lower() not in stopwords_
+        if not word.startswith("'")
+        and word not in punctuation
+        and word.lower() not in stopwords_
     ]
 
     return " ".join(optimized_words)
 
 
-def predict(nlp, model, x):
-    docs = [nlp(optimized_phrase(text)) for text in x]
+def predict(nlp, model, phrase):
+    words = word_tokenize(optimized_phrase(phrase))
+    docs = [nlp(word) for word in words]
     word_vectors = [x.vector for x in docs]
-    return model.predict(word_vectors)[0]
+    predictions = model.predict(word_vectors)
+    counter = Counter(predictions.tolist())
+
+    return counter.most_common(1)[0][0]
 
 
 def dump(model, file_path):
@@ -52,7 +59,9 @@ def load(file_path):
 
 def train(dataframe):
     nlp = load_nlp()
-    docs = [nlp(optimized_phrase(text)) for text in dataframe["text"]]
+
+    dataframe["text"] = dataframe["text"].apply(optimized_phrase)
+    docs = [nlp(text) for text in dataframe["text"]]
     word_vectors = [x.vector for x in docs]
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -68,10 +77,14 @@ def train(dataframe):
     return model
 
 
-def init():
+def download_nltk_data():
     nltk.download("wordnet")
     nltk.download("stopwords")
     nltk.download("punkt")
+
+
+def init():
+    download_nltk_data()
 
     categories = Category.values()
     category_df = load_df(
