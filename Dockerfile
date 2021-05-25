@@ -11,6 +11,7 @@ COPY . /code/
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
+RUN apt-get -y install cmake
 
 RUN pip install poetry \
     && poetry config virtualenvs.create false \
