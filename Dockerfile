@@ -15,7 +15,7 @@ RUN apt-get -y install cmake
 
 RUN pip install poetry \
     && poetry config virtualenvs.create false \
-    && poetry install
+    && poetry install --no-dev
 
 RUN pip install "en_core_web_lg-3.0.0.tar.gz"
 
